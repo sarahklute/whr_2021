@@ -1,0 +1,265 @@
+Sarah Klute
+Mongo DB Query Tutorial
+DS 4300 HW3
+
+Welcome to My Mongo Tutorial which shows the capabilities of Mongo on data from the World Happiness Report.
+Each of the Queries below demonstrates the capabilities of Mongo in insightful and interesting ways.
+
+First get a general overview of what the happiest and least happy countries are using the ladder scale in Query 1
+and Query 2!
+
+Query 1: What are the top 10 happiest countries using the ladder scale?
+db.whr_2021.find({}, { "Country name": 1, _id: 0 }).sort({ "Ladder score": -1 }).limit(10)
+Result: world_happiness_report_db> db.whr_2021.find({}, { "Country name": 1, _id: 0 }).sort({ "Ladder score": -1 }).limit(10)
+[
+  { 'Country name': 'Finland' },
+  { 'Country name': 'Denmark' },
+  { 'Country name': 'Switzerland' },
+  { 'Country name': 'Iceland' },
+  { 'Country name': 'Netherlands' },
+  { 'Country name': 'Norway' },
+  { 'Country name': 'Sweden' },
+  { 'Country name': 'Luxembourg' },
+  { 'Country name': 'New Zealand' },
+  { 'Country name': 'Austria' }
+]
+
+Query 2: What are top 10 least happy countries?
+db.whr_2021.find({}, { "Country name": 1, _id: 0 }).sort({ "Ladder score": 1 }).limit(10)
+Result: world_happiness_report_db> db.whr_2021.find({}, { "Country name": 1, _id: 0 }).sort({ "Ladder score": 1 }).limit(10)
+[
+  { 'Country name': 'Afghanistan' },
+  { 'Country name': 'Zimbabwe' },
+  { 'Country name': 'Rwanda' },
+  { 'Country name': 'Botswana' },
+  { 'Country name': 'Lesotho' },
+  { 'Country name': 'Malawi' },
+  { 'Country name': 'Haiti' },
+  { 'Country name': 'Tanzania' },
+  { 'Country name': 'Yemen' },
+  { 'Country name': 'Burundi' }
+]
+
+Then discover what countries have the lowest freedom to make life choices, look at the comparisons between
+the least happy countries and the ones where there is the lowest freedom to make life choices.
+
+Query 3: freedom to make life choices
+db.whr_2021.find({}, { "Country name": 1, _id: 0 }).sort({ "Freedom to make life choices": 1 }).limit(10)
+Result: world_happiness_report_db> db.whr_2021.find({}, { "Country name": 1, _id: 0 }).sort({ "Freedom to make life choices": 1 }).limit(10)
+[
+  { 'Country name': 'Afghanistan' },
+  { 'Country name': 'Algeria' },
+  { 'Country name': 'Lebanon' },
+  { 'Country name': 'Comoros' },
+  { 'Country name': 'Madagascar' },
+  { 'Country name': 'Mauritania' },
+  { 'Country name': 'Turkey' },
+  { 'Country name': 'Chad' },
+  { 'Country name': 'Greece' },
+  { 'Country name': 'Haiti' }
+]
+
+Now make some statistical aggregations through discovering the average happiness scores by region.
+Query 4: What is the average happiness score by region?
+db.whr_2021.aggregate([{ $group: { _id: null, average_happiness_score: { $avg: "$Ladder score" } } }])
+Result: world_happiness_report_db> db.whr_2021.aggregate([{ $group: { _id: "$Regional indicator", average_happiness_score: { $avg: "$Ladder score" } } }])
+[
+  { _id: 'Southeast Asia', average_happiness_score: 5.407555555555556 },
+  {_id: 'Commonwealth of Independent States', average_happiness_score: 5.467},
+  { _id: 'South Asia', average_happiness_score: 4.441857142857143 },
+  {_id: 'Latin America and Caribbean', average_happiness_score: 5.90805},
+  { _id: 'North America and ANZ', average_happiness_score: 7.1285 },
+  {_id: 'Middle East and North Africa', average_happiness_score: 5.219764705882353},
+  {_id: 'Sub-Saharan Africa', average_happiness_score: 4.494472222222223},
+  { _id: 'East Asia', average_happiness_score: 5.810333333333333 },
+  { _id: 'Western Europe', average_happiness_score: 6.914904761904761 },
+  {_id: 'Central and Eastern Europe', average_happiness_score: 5.984764705882353}
+]
+
+Query 5: What is longest and shortest life expectancy?
+db.whr_2021.find({}, { "Country name": 1, _id: 0 }).sort({ "Healthy life expectancy": -1 }).limit(10)
+Result Longest: world_happiness_report_db> db.whr_2021.find({}, { "Country name": 1, _id: 0 }).sort({ "Healthy life expectancy": -1 }).limit(10)
+[
+  { 'Country name': 'Singapore' },
+  { 'Country name': 'Hong Kong S.A.R. of China' },
+  { 'Country name': 'Japan' },
+  { 'Country name': 'Spain' },
+  { 'Country name': 'Switzerland' },
+  { 'Country name': 'France' },
+  { 'Country name': 'South Korea' },
+  { 'Country name': 'Australia' },
+  { 'Country name': 'North Cyprus' },
+  { 'Country name': 'Cyprus' }
+]
+Result Shortest: world_happiness_report_db> db.whr_2021.find({}, { "Country name": 1, _id: 0 }).sort({ "Healthy life expectancy": 1 }).limit(10)
+[
+  { 'Country name': 'Chad' },
+  { 'Country name': 'Lesotho' },
+  { 'Country name': 'Nigeria' },
+  { 'Country name': 'Ivory Coast' },
+  { 'Country name': 'Swaziland' },
+  { 'Country name': 'Sierra Leone' },
+  { 'Country name': 'Mali' },
+  { 'Country name': 'Afghanistan' },
+  { 'Country name': 'Burundi' },
+  { 'Country name': 'Cameroon' }
+
+
+Now discover some explanations as to why the ladder score or happiness scores are what they are!
+Query 6: What is the the majority of ladder score explained by in each region?
+db.whr_2021.aggregate([{ $project: { region: "$Regional indicator", explanations: { $objectToArray: "$$ROOT" } } }, { $unwind: "$explanations" }, { $match: { "explanations.k": { $regex: /^Explained by:/ } } }, { $group: { _id: { region: "$region", explanation: "$explanations.k" }, total_influence: { $sum: "$explanations.v" } } }, { $sort: { "_id.region": 1, total_influence: -1 } }, { $group: { _id: "$_id.region", top_explanation: { $first: "$_id.explanation" }, total_influence: { $first: "$total_influence" } } }])
+Result:
+[
+  {
+    _id: 'Central and Eastern Europe',
+    top_explanation: 'Explained by: Log GDP per capita',
+    total_influence: 20.631
+  },
+  {
+    _id: 'Commonwealth of Independent States',
+    top_explanation: 'Explained by: Log GDP per capita',
+    total_influence: 11.598
+  },
+  {
+    _id: 'Latin America and Caribbean',
+    top_explanation: 'Explained by: Log GDP per capita',
+    total_influence: 19.108
+  },
+  {
+    _id: 'Sub-Saharan Africa',
+    top_explanation: 'Explained by: Social support',
+    total_influence: 18.994
+  },
+  {
+    _id: 'North America and ANZ',
+    top_explanation: 'Explained by: Log GDP per capita',
+    total_influence: 5.833
+  },
+  {
+    _id: 'Southeast Asia',
+    top_explanation: 'Explained by: Log GDP per capita',
+    total_influence: 8.762
+  },
+  {
+    _id: 'South Asia',
+    top_explanation: 'Explained by: Log GDP per capita',
+    total_influence: 5.007
+  },
+  {
+    _id: 'Western Europe',
+    top_explanation: 'Explained by: Log GDP per capita',
+    total_influence: 30.721
+  },
+  {
+    _id: 'Middle East and North Africa',
+    top_explanation: 'Explained by: Log GDP per capita',
+    total_influence: 18.001
+  },
+  {
+    _id: 'East Asia',
+    top_explanation: 'Explained by: Log GDP per capita',
+    total_influence: 7.824
+  }
+]
+
+How are regions effected by corruption, can you see the trends hypothesise as the reasoning for higher regional levels?
+Query 7: What regions have the highest corruption?
+Result db.whr_2021.aggregate([{ $group: { _id: "$Regional indicator", average_corruption_perceptions: { $avg: "$Perceptions of corruption" } } }])Resultworld_happiness_report_db> db.whr_2021.aggregate([{ $group: { _id: "$Regional indicator", average_corruption_perceptions: { $avg: "$Perceptions of corruption" } } }])
+[
+  {
+    _id: 'Middle East and North Africa',
+    average_corruption_perceptions: 0.7622352941176471
+  },
+  {
+    _id: 'North America and ANZ',
+    average_corruption_perceptions: 0.44925
+  },
+  {
+    _id: 'East Asia',
+    average_corruption_perceptions: 0.6833333333333332
+  },
+  {
+    _id: 'Western Europe',
+    average_corruption_perceptions: 0.5230952380952381
+  },
+  {
+    _id: 'Central and Eastern Europe',
+    average_corruption_perceptions: 0.8505294117647059
+  },
+  {
+    _id: 'Sub-Saharan Africa',
+    average_corruption_perceptions: 0.7659444444444445
+  },
+  {
+    _id: 'Southeast Asia',
+    average_corruption_perceptions: 0.709111111111111
+  },
+  {
+    _id: 'Commonwealth of Independent States',
+    average_corruption_perceptions: 0.7250833333333334
+  },
+  {
+    _id: 'South Asia',
+    average_corruption_perceptions: 0.7974285714285714
+  },
+  {
+    _id: 'Latin America and Caribbean',
+    average_corruption_perceptions: 0.7926
+  }
+]
+
+Now lets specify a results of a specific measure
+Query 8: What Southeast asian countries have a ladder score above 3?
+db.whr_2021.find({"Regional indicator": "Southeast Asia", "Ladder score": {"$gt": 3}})
+Result: world_happiness_report_db> db.whr_2021.find(
+...     {"Regional indicator": "Southeast Asia", "Ladder score": {"$gt": 3}},
+...     {"Country name": 1, "Ladder score": 1, "_id": 0}
+... )
+[
+  { 'Country name': 'Singapore', 'Ladder score': 6.377 },
+  { 'Country name': 'Thailand', 'Ladder score': 5.985 },
+  { 'Country name': 'Philippines', 'Ladder score': 5.88 },
+  { 'Country name': 'Vietnam', 'Ladder score': 5.411 },
+  { 'Country name': 'Malaysia', 'Ladder score': 5.384 },
+  { 'Country name': 'Indonesia', 'Ladder score': 5.345 },
+  { 'Country name': 'Laos', 'Ladder score': 5.03 },
+  { 'Country name': 'Cambodia', 'Ladder score': 4.83 },
+  { 'Country name': 'Myanmar', 'Ladder score': 4.426 }
+
+Query 9: What are the highest GDP per capita countries and what are the specific levels?
+Results: world_happiness_report_db> db.whr_2021.find(
+...     {"Logged GDP per capita": {"$gt": 11}},
+...     {"Country name": 1, "Logged GDP per capita": 1, "_id": 0}
+... )
+[
+  { 'Country name': 'Switzerland', 'Logged GDP per capita': 11.117 },
+  { 'Country name': 'Norway', 'Logged GDP per capita': 11.053 },
+  { 'Country name': 'Luxembourg', 'Logged GDP per capita': 11.647 },
+  { 'Country name': 'Ireland', 'Logged GDP per capita': 11.342 },
+  { 'Country name': 'United States', 'Logged GDP per capita': 11.023 },
+  {
+    'Country name': 'United Arab Emirates',
+    'Logged GDP per capita': 11.085
+  },
+  { 'Country name': 'Singapore', 'Logged GDP per capita': 11.488 }
+]
+
+Query 10: How many countries are in each region through summing the count within the database?
+Results: world_happiness_report_db> db.whr_2021.aggregate([
+...     {"$group": {"_id": "$Regional indicator", "count": {"$sum": 1}}}
+... ])
+[
+  { _id: 'East Asia', count: 6 },
+  { _id: 'North America and ANZ', count: 4 },
+  { _id: 'Latin America and Caribbean', count: 20 },
+  { _id: 'Sub-Saharan Africa', count: 36 },
+  { _id: 'Southeast Asia', count: 9 },
+  { _id: 'Commonwealth of Independent States', count: 12 },
+  { _id: 'Central and Eastern Europe', count: 17 },
+  { _id: 'South Asia', count: 7 },
+  { _id: 'Middle East and North Africa', count: 17 },
+  { _id: 'Western Europe', count: 21 }
+]
+
+
+Additional queries done through pyMongo pipeline!
